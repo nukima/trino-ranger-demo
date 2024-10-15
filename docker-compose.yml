@@ -13,7 +13,8 @@ services:
     networks:
       - trino-ranger-demo
     volumes:
-    - ranger-es-data:/usr/share/elasticsearch/data
+      - ranger-es-data:/usr/share/elasticsearch/data
+
   postgresql:
     image: postgres:13
     container_name: psql01
@@ -25,10 +26,23 @@ services:
     networks:
       - trino-ranger-demo
     volumes:
-    - ranger-pg-data:/var/lib/postgresql/data
+      - ranger-pg-data:/var/lib/postgresql/data
+
+  mariadb:
+    hostname: mariadb
+    image: mariadb:10.5.8
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: admin
+      MYSQL_DATABASE: metastore_db
+    networks:
+      - trino-ranger-demo
+
   ranger-admin:
     image: aakashnand/trino-ranger-demo:v4.0
-    #build: ranger-admin
     container_name: ranger-admin
     hostname: ranger-admin
     entrypoint: /root/ranger-admin/docker-entrypoint.sh
@@ -46,6 +60,7 @@ services:
       - trino-ranger-demo
     volumes:
       - ./ranger-admin:/root/ranger-admin
+
   trino:
     image: trinodb/trino:436
     hostname: localhost-trino
@@ -55,13 +70,50 @@ services:
     networks:
       - trino-ranger-demo
     volumes:
+      - ./trino/etc:/etc/trino:rw
       - ./trino/install.properties:/root/install.properties
       - ./trino/docker-entrypoint.sh:/root/docker-entrypoint.sh
     ports:
       - 8080:8080
+
+  hive-metastore:
+    image: 'bitsondatadev/hive-metastore:latest'
+    hostname: hive-metastore
+    container_name: hive-metastore
+    environment:
+      METASTORE_DB_HOSTNAME: mariadb
+    depends_on:
+      - mariadb
+    ports:
+      - "9083:9083"
+    networks:
+      - trino-ranger-demo
+    volumes:
+      - ./hive-metastore/metastore-site.xml:/opt/apache-hive-metastore-3.0.0-bin/conf/metastore-site.xml:ro
+    entrypoint: [ "/entrypoint.sh" ]
+
+  minio:
+    image: minio/minio
+    hostname: minio
+    container_name: minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+      MINIO_BUCKETS: hive
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - trino-ranger-demo
+
 networks:
   trino-ranger-demo:
     driver: bridge
+
 volumes:
   ranger-es-data:
   ranger-pg-data:
+  minio-data:

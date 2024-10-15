@@ -17,4 +17,4 @@ tar xvf ${RANGER_VERSION}.tar.gz -C /root/${RANGER_VERSION} --strip-components 1
 yes | cp -rf /root/install.properties /root/${RANGER_VERSION}/ && \
 chown root:root -R /root/${RANGER_VERSION}/* && \
 /root/${RANGER_VERSION}/enable-trino-plugin.sh && \
-/usr/lib/trino/bin/run-trino
+/usr/lib/trino/bin/launcher run --etc-dir=/etc/trino
